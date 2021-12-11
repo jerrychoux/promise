@@ -27,7 +27,7 @@ namespace cn.jerrychoux.promise {
                 builder.SetException(ex);
             }
         }
-        public Promise(Action<Action> callback) : this(callback == null ? null! : (resolve, _) => callback.Invoke(resolve)) { }
+        public Promise(Action<Action> callback) : this(callback == null ? (Action<Action, Action<Exception>>)null! : (resolve, _) => callback!.Invoke(resolve)) { }
         #endregion
 
         #region Utils
@@ -79,10 +79,10 @@ namespace cn.jerrychoux.promise {
 
             if (tasks.Length == 0) return Resolve();
 
-            var builder = new TaskCompletionSource();
-            var builders = new List<TaskCompletionSource>(tasks.Length);
+            var builder = new TaskCompletionSource<int>();
+            var builders = new List<TaskCompletionSource<int>>(tasks.Length);
             foreach (var task in tasks) {
-                builders.Add(new TaskCompletionSource());
+                builders.Add(new TaskCompletionSource<int>());
             }
 
             int index = -1;
@@ -92,8 +92,8 @@ namespace cn.jerrychoux.promise {
                     if (t.IsFaulted) {
                         builders[i].SetException(t.Exception!);
                     } else {
-                        builders[i].SetResult();
-                        builder.TrySetResult();
+                        builders[i].SetResult(default);
+                        builder.TrySetResult(default);
                     }
                 });
             }
@@ -122,14 +122,14 @@ namespace cn.jerrychoux.promise {
 
             if (tasks.Length == 0) return Resolve();
 
-            var builder = new TaskCompletionSource();
+            var builder = new TaskCompletionSource<int>();
 
             foreach (Task task in tasks) {
                 task.ContinueWith(t => {
                     if (t.IsFaulted) {
                         builder.TrySetException(t.Exception!);
                     } else {
-                        builder.TrySetResult();
+                        builder.TrySetResult(default);
                     }
                 });
             }
@@ -149,20 +149,20 @@ namespace cn.jerrychoux.promise {
         public IPromise Then(Action onFulfilled, Action<Exception> onRejected) {
             ValidNonNull(onFulfilled, nameof(onFulfilled));
 
-            var builder = new TaskCompletionSource();
+            var builder = new TaskCompletionSource<int>();
 
             BackingTask!.ContinueWith(t => {
                 if (t.IsFaulted) {
                     if (onRejected != null) {
                         onRejected(UnwrapException(t.Exception!));
-                        builder.SetResult();
+                        builder.SetResult(default);
                     } else {
                         builder.SetException(t.Exception!);
                     }
                 } else {
                     try {
                         onFulfilled();
-                        builder.SetResult();
+                        builder.SetResult(default);
                     } catch (System.Exception ex) {
                         builder.SetException(ex);
                     }
@@ -175,13 +175,13 @@ namespace cn.jerrychoux.promise {
         public IPromise Then(Func<Task> onFulfilled, Action<Exception> onRejected) {
             ValidNonNull(onFulfilled, nameof(onFulfilled));
 
-            var builder = new TaskCompletionSource();
+            var builder = new TaskCompletionSource<int>();
 
             BackingTask!.ContinueWith(t => {
                 if (t.IsFaulted) {
                     if (onRejected != null) {
                         onRejected(UnwrapException(t.Exception!));
-                        builder.SetResult();
+                        builder.SetResult(default);
                     } else {
                         builder.SetException(t.Exception!);
                     }
@@ -192,11 +192,11 @@ namespace cn.jerrychoux.promise {
                             if (t.IsFaulted) {
                                 builder.SetException(t.Exception!);
                             } else {
-                                builder.SetResult();
+                                builder.SetResult(default);
                             }
                         });
                     } else {
-                        builder.SetResult();
+                        builder.SetResult(default);
                     }
                 }
             });
@@ -207,13 +207,13 @@ namespace cn.jerrychoux.promise {
         public IPromise Then(Func<IPromise> onFulfilled, Action<Exception> onRejected) {
             ValidNonNull(onFulfilled, nameof(onFulfilled));
 
-            var builder = new TaskCompletionSource();
+            var builder = new TaskCompletionSource<int>();
 
             BackingTask!.ContinueWith(t => {
                 if (t.IsFaulted) {
                     if (onRejected != null) {
                         onRejected(UnwrapException(t.Exception!));
-                        builder.SetResult();
+                        builder.SetResult(default);
                     } else {
                         builder.SetException(t.Exception!);
                     }
@@ -222,10 +222,10 @@ namespace cn.jerrychoux.promise {
                         IPromise promise = onFulfilled();
                         if (promise != null) {
                             promise
-                                .Then(() => builder.SetResult())
+                                .Then(() => builder.SetResult(default))
                                 .Catch(ex => builder.SetException(ex));
                         } else {
-                            builder.SetResult();
+                            builder.SetResult(default);
                         }
                     } catch (System.Exception ex) {
                         builder.SetException(ex);
